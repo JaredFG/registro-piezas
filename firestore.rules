@@ -19,6 +19,14 @@ service cloud.firestore {
     // Cualquier usuario con sesión puede crear registros (trabajador).
     // Solo el rol "ejecutivo" puede leer/listar todos los registros.
     // Nadie puede editar ni borrar registros ya creados.
+    // Ficha de cada pieza, con el folio como ID. Todos los usuarios con sesión la pueden leer
+    // (para el autollenado) y crear/actualizar al registrar un movimiento. Nadie la puede borrar.
+    match /piezas/{folio} {
+      allow read: if estaAutenticado();
+      allow create, update: if estaAutenticado() && request.resource.data.folio == folio;
+      allow delete: if false;
+    }
+
     match /registros/{registroId} {
       allow create: if estaAutenticado();
       allow read, list: if estaAutenticado() && rolDeUsuario() == 'ejecutivo';

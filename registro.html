@@ -16,17 +16,32 @@
     <div class="card">
       <h2>Nuevo registro</h2>
       <form id="form-registro">
-        <label for="nombre-pieza">Nombre de la pieza</label>
-        <input type="text" id="nombre-pieza" required />
-
         <div class="fila-dos">
           <div>
             <label for="folio">Folio</label>
-            <input type="text" id="folio" required />
+            <input type="text" id="folio" required autocomplete="off" />
           </div>
           <div>
             <label for="fecha-hora">Fecha y hora</label>
             <input type="text" id="fecha-hora" disabled />
+          </div>
+        </div>
+        <div id="estado-folio" class="estado-folio"></div>
+
+        <label for="nombre-pieza">Nombre de la pieza</label>
+        <input type="text" id="nombre-pieza" required />
+
+        <label for="cliente">Cliente</label>
+        <input type="text" id="cliente" />
+
+        <div class="fila-dos">
+          <div>
+            <label for="material">Material</label>
+            <input type="text" id="material" />
+          </div>
+          <div>
+            <label for="cantidad">Cantidad</label>
+            <input type="number" id="cantidad" min="0" step="1" />
           </div>
         </div>
 

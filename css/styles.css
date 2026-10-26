@@ -115,6 +115,16 @@ button.primario:hover { background: var(--azul-oscuro); }
   border: 1px solid #fca5a5;
 }
 
+.estado-folio {
+  font-size: 13px;
+  margin-top: 6px;
+  min-height: 18px;
+  color: #6b7280;
+}
+
+.estado-folio.encontrado { color: var(--verde); }
+.estado-folio.nuevo { color: var(--azul); }
+
 .fila-dos {
   display: grid;
   grid-template-columns: 1fr 1fr;

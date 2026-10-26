@@ -11,7 +11,7 @@ let todosLosRegistros = [];
 // El texto lo escriben los trabajadores; se escapa para que no se interprete como HTML.
 function escaparHtml(valor) {
   const div = document.createElement("div");
-  div.textContent = valor || "";
+  div.textContent = valor ?? "";
   return div.innerHTML;
 }
 
@@ -33,6 +33,9 @@ function renderizarTabla(registros) {
       <td>${formatearFecha(r.creadoEn)}</td>
       <td>${escaparHtml(r.folio)}</td>
       <td>${escaparHtml(r.nombrePieza)}</td>
+      <td>${escaparHtml(r.cliente)}</td>
+      <td>${escaparHtml(r.material)}</td>
+      <td>${escaparHtml(r.cantidad)}</td>
       <td>${escaparHtml(r.zonaOrigen)}</td>
       <td>${escaparHtml(r.zonaDestino)}</td>
       <td>${escaparHtml(r.nombreTrabajador)}</td>
@@ -47,6 +50,9 @@ function renderizarTabla(registros) {
           <th>Fecha y hora</th>
           <th>Folio</th>
           <th>Pieza</th>
+          <th>Cliente</th>
+          <th>Material</th>
+          <th>Cantidad</th>
           <th>Zona origen</th>
           <th>Zona destino</th>
           <th>Trabajador</th>
@@ -63,6 +69,7 @@ function aplicarFiltros() {
   const zonaOrigen = document.getElementById("f-zona-origen").value;
   const zonaDestino = document.getElementById("f-zona-destino").value;
   const trabajador = document.getElementById("f-trabajador").value.trim().toLowerCase();
+  const cliente = document.getElementById("f-cliente").value.trim().toLowerCase();
   const desde = document.getElementById("f-desde").value;
   const hasta = document.getElementById("f-hasta").value;
 
@@ -71,6 +78,7 @@ function aplicarFiltros() {
     if (zonaOrigen && r.zonaOrigen !== zonaOrigen) return false;
     if (zonaDestino && r.zonaDestino !== zonaDestino) return false;
     if (trabajador && !(r.nombreTrabajador || "").toLowerCase().includes(trabajador)) return false;
+    if (cliente && !(r.cliente || "").toLowerCase().includes(cliente)) return false;
 
     if (r.creadoEn) {
       const fechaRegistro = r.creadoEn.toDate();
@@ -90,6 +98,7 @@ document.getElementById("btn-limpiar").addEventListener("click", () => {
   document.getElementById("f-zona-origen").value = "";
   document.getElementById("f-zona-destino").value = "";
   document.getElementById("f-trabajador").value = "";
+  document.getElementById("f-cliente").value = "";
   document.getElementById("f-desde").value = "";
   document.getElementById("f-hasta").value = "";
   renderizarTabla(todosLosRegistros);
