@@ -1,20 +1,10 @@
 import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { db } from "./firebase-init.js";
 import { protegerPagina, configurarBotonSalir } from "./auth-guard.js";
+import { ZONAS_ORIGEN, ZONAS_DESTINO, llenarSelectZonas } from "./zonas.js";
 
-const ALFABETO = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-function llenarSelect(id, opciones) {
-  const select = document.getElementById(id);
-  select.innerHTML = opciones.map(o => `<option value="${o.valor}">${o.texto}</option>`).join("");
-}
-
-// Origen: Externo + Zona A..Z. Destino: solo Zona A..Z (sin Externo).
-llenarSelect("zona-origen", [
-  { valor: "Externo", texto: "Externo" },
-  ...ALFABETO.map(letra => ({ valor: `Zona ${letra}`, texto: `Zona ${letra}` }))
-]);
-llenarSelect("zona-destino", ALFABETO.map(letra => ({ valor: `Zona ${letra}`, texto: `Zona ${letra}` })));
+llenarSelectZonas("zona-origen", ZONAS_ORIGEN);
+llenarSelectZonas("zona-destino", ZONAS_DESTINO);
 
 function actualizarRelojFecha() {
   document.getElementById("fecha-hora").value = new Date().toLocaleString("es-MX");

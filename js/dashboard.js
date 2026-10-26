@@ -1,23 +1,19 @@
 import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { db } from "./firebase-init.js";
 import { protegerPagina, configurarBotonSalir } from "./auth-guard.js";
+import { ZONAS_ORIGEN, ZONAS_DESTINO, llenarSelectZonas } from "./zonas.js";
 
-const ALFABETO = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-function llenarSelect(id, opciones) {
-  const select = document.getElementById(id);
-  opciones.forEach(o => {
-    const opt = document.createElement("option");
-    opt.value = o;
-    opt.textContent = o;
-    select.appendChild(opt);
-  });
-}
-
-llenarSelect("f-zona-origen", ["Externo", ...ALFABETO.map(l => `Zona ${l}`)]);
-llenarSelect("f-zona-destino", ALFABETO.map(l => `Zona ${l}`));
+llenarSelectZonas("f-zona-origen", ZONAS_ORIGEN);
+llenarSelectZonas("f-zona-destino", ZONAS_DESTINO);
 
 let todosLosRegistros = [];
+
+// El texto lo escriben los trabajadores; se escapa para que no se interprete como HTML.
+function escaparHtml(valor) {
+  const div = document.createElement("div");
+  div.textContent = valor || "";
+  return div.innerHTML;
+}
 
 function formatearFecha(timestamp) {
   if (!timestamp) return "—";
@@ -35,12 +31,12 @@ function renderizarTabla(registros) {
   const filas = registros.map(r => `
     <tr>
       <td>${formatearFecha(r.creadoEn)}</td>
-      <td>${r.folio || ""}</td>
-      <td>${r.nombrePieza || ""}</td>
-      <td>${r.zonaOrigen || ""}</td>
-      <td>${r.zonaDestino || ""}</td>
-      <td>${r.nombreTrabajador || ""}</td>
-      <td>${r.comentarios || ""}</td>
+      <td>${escaparHtml(r.folio)}</td>
+      <td>${escaparHtml(r.nombrePieza)}</td>
+      <td>${escaparHtml(r.zonaOrigen)}</td>
+      <td>${escaparHtml(r.zonaDestino)}</td>
+      <td>${escaparHtml(r.nombreTrabajador)}</td>
+      <td>${escaparHtml(r.comentarios)}</td>
     </tr>
   `).join("");
 
