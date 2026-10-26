@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    function rolDeUsuario() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol;
+    }
+
+    // Solo cada usuario puede leer su propio perfil. Se crean a mano desde la consola.
+    match /usuarios/{userId} {
+      allow read: if estaAutenticado() && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // Cualquier usuario con sesión puede crear registros (trabajador).
+    // Solo el rol "ejecutivo" puede leer/listar todos los registros.
+    // Nadie puede editar ni borrar registros ya creados.
+    match /registros/{registroId} {
+      allow create: if estaAutenticado();
+      allow read, list: if estaAutenticado() && rolDeUsuario() == 'ejecutivo';
+      allow update, delete: if false;
+    }
+  }
+}

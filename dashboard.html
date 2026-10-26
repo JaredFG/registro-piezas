@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard - Registro de Piezas</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="topbar">
+    <h1>Dashboard — <span id="nombre-usuario"></span></h1>
+    <button id="btn-salir">Salir</button>
+  </div>
+
+  <div class="dashboard-contenedor">
+    <div class="filtros">
+      <div>
+        <label for="f-folio">Folio</label>
+        <input type="text" id="f-folio" placeholder="Buscar folio..." />
+      </div>
+      <div>
+        <label for="f-zona-origen">Zona origen</label>
+        <select id="f-zona-origen"><option value="">Todas</option></select>
+      </div>
+      <div>
+        <label for="f-zona-destino">Zona destino</label>
+        <select id="f-zona-destino"><option value="">Todas</option></select>
+      </div>
+      <div>
+        <label for="f-trabajador">Trabajador</label>
+        <input type="text" id="f-trabajador" placeholder="Nombre..." />
+      </div>
+      <div>
+        <label for="f-desde">Desde</label>
+        <input type="date" id="f-desde" />
+      </div>
+      <div>
+        <label for="f-hasta">Hasta</label>
+        <input type="date" id="f-hasta" />
+      </div>
+      <div>
+        <button id="btn-filtrar">Filtrar</button>
+      </div>
+      <div>
+        <button id="btn-limpiar">Limpiar</button>
+      </div>
+    </div>
+
+    <div id="zona-tabla">
+      <div class="cargando">Cargando registros...</div>
+    </div>
+  </div>
+
+  <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>

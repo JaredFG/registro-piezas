@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Registro de pieza</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="topbar">
+    <h1>Registro de piezas — <span id="nombre-usuario"></span></h1>
+    <button id="btn-salir">Salir</button>
+  </div>
+
+  <div class="contenedor">
+    <div class="card">
+      <h2>Nuevo registro</h2>
+      <form id="form-registro">
+        <label for="nombre-pieza">Nombre de la pieza</label>
+        <input type="text" id="nombre-pieza" required />
+
+        <div class="fila-dos">
+          <div>
+            <label for="folio">Folio</label>
+            <input type="text" id="folio" required />
+          </div>
+          <div>
+            <label for="fecha-hora">Fecha y hora</label>
+            <input type="text" id="fecha-hora" disabled />
+          </div>
+        </div>
+
+        <div class="fila-dos">
+          <div>
+            <label for="zona-origen">Zona de origen</label>
+            <select id="zona-origen" required></select>
+          </div>
+          <div>
+            <label for="zona-destino">Zona destino</label>
+            <select id="zona-destino" required></select>
+          </div>
+        </div>
+
+        <label for="comentarios">Comentarios</label>
+        <textarea id="comentarios"></textarea>
+
+        <button type="submit" class="primario">Registrar</button>
+        <div id="mensaje" class="mensaje"></div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="js/registro.js"></script>
+</body>
+</html>
