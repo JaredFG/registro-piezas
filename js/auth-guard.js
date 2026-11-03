@@ -3,7 +3,7 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-
 import { auth, db } from "./firebase-init.js";
 
 // Revisa que haya sesión y que el rol coincida con el permitido para la página actual.
-// rolRequerido: "trabajador" o "ejecutivo"
+// rolRequerido: "operador" o "ejecutivo" ("trabajador" se acepta como sinónimo de "operador")
 // Devuelve una Promise que resuelve con { uid, nombre, rol } cuando todo es válido.
 export function protegerPagina(rolRequerido) {
   return new Promise((resolve) => {
@@ -21,12 +21,13 @@ export function protegerPagina(rolRequerido) {
       }
 
       const datos = usuarioDoc.data();
-      if (datos.rol !== rolRequerido) {
+      const rolActual = datos.rol === "trabajador" ? "operador" : datos.rol;
+      if (rolActual !== rolRequerido) {
         window.location.href = datos.rol === "ejecutivo" ? "dashboard.html" : "registro.html";
         return;
       }
 
-      resolve({ uid: user.uid, nombre: datos.nombre || user.email, rol: datos.rol });
+      resolve({ uid: user.uid, nombre: datos.nombre || user.email, rol: rolActual });
     });
   });
 }

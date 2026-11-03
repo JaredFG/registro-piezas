@@ -2,18 +2,16 @@
 // Puedes cambiar los nombres, quitar o agregar zonas: cada una va entre comillas y separada por coma.
 
 export const ZONAS_ORIGEN = [
-  "Externo",
-  "Zona A", "Zona B", "Zona C", "Zona D", "Zona E", "Zona F", "Zona G",
-  "Zona H", "Zona I", "Zona J", "Zona K", "Zona L", "Zona M", "Zona N",
-  "Zona O", "Zona P", "Zona Q", "Zona R", "Zona S", "Zona T", "Zona U",
-  "Zona V", "Zona W", "Zona X", "Zona Y", "Zona Z"
+  "Manufactura",
+  "Preparación embarque", "Patio embarque", "Rack 1.2", "Rack 1.3", "Rack A embarques", "Rack B embarques", "Rack C embarques",
+  "Rack D embarques", "Rack E embarques", "Rack F embarques", "Rack G embarques", "Rack H embarques", "Rack I embarques", "Rack J embarques",
+  "Rack K embarques", "Rack L embarques", "Rack M embarques"
 ];
 
 export const ZONAS_DESTINO = [
-  "Zona A", "Zona B", "Zona C", "Zona D", "Zona E", "Zona F", "Zona G",
-  "Zona H", "Zona I", "Zona J", "Zona K", "Zona L", "Zona M", "Zona N",
-  "Zona O", "Zona P", "Zona Q", "Zona R", "Zona S", "Zona T", "Zona U",
-  "Zona V", "Zona W", "Zona X", "Zona Y", "Zona Z"
+  "Preparación embarque", "Patio embarque", "Rack 1.2", "Rack 1.3", "Rack A embarques", "Rack B embarques", "Rack C embarques",
+  "Rack D embarques", "Rack E embarques", "Rack F embarques", "Rack G embarques", "Rack H embarques", "Rack I embarques", "Rack J embarques",
+  "Rack K embarques", "Rack L embarques", "Rack M embarques"
 ];
 
 export function llenarSelectZonas(idSelect, zonas) {

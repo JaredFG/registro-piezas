@@ -4,6 +4,15 @@ import { auth, db } from "./firebase-init.js";
 
 const form = document.getElementById("form-login");
 const mensaje = document.getElementById("mensaje");
+const correoInput = document.getElementById("correo");
+const recordarCheckbox = document.getElementById("recordar");
+
+// Recuperar el correo guardado si el usuario marcó "Recuérdame".
+const correoGuardado = localStorage.getItem("correoGuardado");
+if (correoGuardado) {
+  correoInput.value = correoGuardado;
+  recordarCheckbox.checked = true;
+}
 
 function mostrarMensaje(texto, tipo) {
   mensaje.textContent = texto;
@@ -17,6 +26,12 @@ form.addEventListener("submit", async (e) => {
   const contrasena = document.getElementById("contrasena").value;
 
   try {
+    if (recordarCheckbox.checked) {
+      localStorage.setItem("correoGuardado", correo);
+    } else {
+      localStorage.removeItem("correoGuardado");
+    }
+
     const credencial = await signInWithEmailAndPassword(auth, correo, contrasena);
     const uid = credencial.user.uid;
 
@@ -29,7 +44,7 @@ form.addEventListener("submit", async (e) => {
     const rol = usuarioDoc.data().rol;
     if (rol === "ejecutivo") {
       window.location.href = "dashboard.html";
-    } else if (rol === "trabajador") {
+    } else if (rol === "operador" || rol === "trabajador") {
       window.location.href = "registro.html";
     } else {
       mostrarMensaje("Rol no reconocido. Contacta al administrador.", "error");

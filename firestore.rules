@@ -24,7 +24,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Cualquier usuario con sesión puede crear registros (trabajador).
+    // Cualquier usuario con sesión puede crear registros (operador).
     // Solo el rol "ejecutivo" puede leer/listar todos los registros.
     // Nadie puede editar ni borrar registros ya creados.
     match /registros/{registroId} {

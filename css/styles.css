@@ -18,14 +18,25 @@ body {
 }
 
 .topbar {
-  background: var(--azul-oscuro);
+  background: var(--rojo);
   color: white;
   padding: 14px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
+.login-options {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+}
 
+.login-options label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 .topbar h1 {
   font-size: 18px;
   margin: 0;
@@ -82,7 +93,7 @@ textarea { resize: vertical; min-height: 70px; }
 button.primario {
   margin-top: 20px;
   width: 100%;
-  background: var(--azul);
+  background: var(--rojo);
   color: white;
   border: none;
   padding: 12px;
@@ -91,7 +102,7 @@ button.primario {
   cursor: pointer;
 }
 
-button.primario:hover { background: var(--azul-oscuro); }
+button.primario:hover { background: var(--rojo); }
 
 .mensaje {
   margin-top: 14px;
@@ -152,7 +163,7 @@ button.primario:hover { background: var(--azul-oscuro); }
 .filtros label { margin: 0 0 6px; }
 
 .filtros button {
-  background: var(--azul);
+  background: var(--rojo);
   color: white;
   border: none;
   padding: 10px;
@@ -194,4 +205,20 @@ tr:hover td { background: #f9fafb; }
   text-align: center;
   color: #6b7280;
   padding: 20px;
+}
+.img-zoom-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 40px; /* Espacio superior */
+    margin-bottom: 30px;
+    width: 100%;
+}
+
+#myimage {
+    width: 500px; /* Imagen más grande */
+    max-width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 10px;
 }
