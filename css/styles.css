@@ -283,3 +283,22 @@ input:disabled {
 @media (max-width: 520px) {
   .graficas { grid-template-columns: 1fr; }
 }
+
+/* ---- Login: ojito de la contraseña ---- */
+.campo-password { position: relative; }
+.campo-password input { padding-right: 44px; }
+
+.ojo {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+}
+.ojo:hover { color: var(--texto); }
