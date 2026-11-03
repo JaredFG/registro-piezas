@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Analista - Embarques</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="topbar">
+    <h1>Analista — <span id="nombre-usuario"></span></h1>
+    <button id="btn-salir">Salir</button>
+  </div>
+
+  <div class="dashboard-contenedor">
+    <div class="card panel-liberacion">
+      <h2>Liberación de folio</h2>
+      <div class="fila-dos">
+        <div>
+          <label for="folio">Folio</label>
+          <input type="text" id="folio" autocomplete="off" placeholder="Escribe el folio..." />
+        </div>
+        <div>
+          <label for="fecha-liberacion">Fecha de liberación</label>
+          <input type="date" id="fecha-liberacion" disabled />
+        </div>
+      </div>
+      <div id="estado-folio" class="estado-folio"></div>
+
+      <div class="campos-solo-lectura">
+        <div><label for="op">OP</label><input type="text" id="op" disabled /></div>
+        <div><label for="estandar-pieza">Estándar de la pieza</label><input type="text" id="estandar-pieza" disabled /></div>
+        <div><label for="cliente">Cliente</label><input type="text" id="cliente" disabled /></div>
+        <div><label for="material">Material</label><input type="text" id="material" disabled /></div>
+        <div><label for="cantidad">Cantidad</label><input type="text" id="cantidad" disabled /></div>
+        <div><label for="factura">Factura</label><input type="text" id="factura" disabled /></div>
+        <div><label for="medidas">Medidas</label><input type="text" id="medidas" disabled /></div>
+        <div><label for="equipo">Equipo</label><input type="text" id="equipo" disabled /></div>
+        <div><label for="ultima-zona">Última zona</label><input type="text" id="ultima-zona" disabled /></div>
+      </div>
+
+      <button type="button" id="btn-guardar" class="primario" disabled>Guardar fecha de liberación</button>
+      <div id="mensaje" class="mensaje"></div>
+    </div>
+
+    <div id="dashboard-raiz"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script type="module" src="js/analista.js"></script>
+</body>
+</html>

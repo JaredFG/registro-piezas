@@ -10,26 +10,59 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol;
     }
 
-    // Solo cada usuario puede leer su propio perfil. Se crean a mano desde la consola.
+    // "ejecutivo" y "trabajador" son los nombres anteriores de administrador y operador; se siguen aceptando.
+    function esAdministrador() {
+      return estaAutenticado() && rolDeUsuario() in ['administrador', 'ejecutivo'];
+    }
+
+    function esAnalista() {
+      return estaAutenticado() && rolDeUsuario() == 'analista';
+    }
+
+    function esOperador() {
+      return estaAutenticado() && rolDeUsuario() in ['operador', 'trabajador'];
+    }
+
+    // Campos que solo puede escribir el analista.
+    function camposDeLiberacion() {
+      return ['fechaLiberacion', 'liberadoPor', 'liberadoEn'];
+    }
+
+    // La factura, si viene, debe ser un número (o null cuando no se capturó).
+    function facturaValida(datos) {
+      return !('factura' in datos) || datos.factura == null || datos.factura is number;
+    }
+
+    // Solo cada usuario puede leer su propio perfil. Se crean a mano o con el script de alta de usuarios.
     match /usuarios/{userId} {
       allow read: if estaAutenticado() && request.auth.uid == userId;
       allow write: if false;
     }
 
-    // Ficha de cada pieza, con el folio como ID. Todos los usuarios con sesión la pueden leer
-    // (para el autollenado) y crear/actualizar al registrar un movimiento. Nadie la puede borrar.
+    // Ficha de cada pieza, con el folio como ID. Todos los usuarios con sesión la pueden leer.
+    // - El operador la crea/actualiza al registrar un movimiento, pero no toca la fecha de liberación.
+    // - El analista solo puede escribir los campos de liberación.
+    // Nadie la puede borrar.
     match /piezas/{folio} {
       allow read: if estaAutenticado();
-      allow create, update: if estaAutenticado() && request.resource.data.folio == folio;
+      allow create: if esOperador()
+        && request.resource.data.folio == folio
+        && !request.resource.data.keys().hasAny(camposDeLiberacion())
+        && facturaValida(request.resource.data);
+      allow update: if (esOperador()
+          && request.resource.data.folio == folio
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(camposDeLiberacion())
+          && facturaValida(request.resource.data))
+        || (esAnalista()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(camposDeLiberacion()));
       allow delete: if false;
     }
 
-    // Cualquier usuario con sesión puede crear registros (operador).
-    // Solo el rol "ejecutivo" puede leer/listar todos los registros.
+    // Solo el operador crea registros. Administradores y analistas los leen (dashboard).
     // Nadie puede editar ni borrar registros ya creados.
     match /registros/{registroId} {
-      allow create: if estaAutenticado();
-      allow read, list: if estaAutenticado() && rolDeUsuario() == 'ejecutivo';
+      allow create: if esOperador() && facturaValida(request.resource.data);
+      allow read, list: if esAdministrador() || esAnalista();
       allow update, delete: if false;
     }
   }

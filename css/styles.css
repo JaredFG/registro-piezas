@@ -222,3 +222,64 @@ tr:hover td { background: #f9fafb; }
     display: block;
     border-radius: 10px;
 }
+
+/* ---- Dashboard: resumen y gráficas ---- */
+.resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.kpi {
+  background: white;
+  border-radius: 10px;
+  padding: 16px 18px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-numero { font-size: 30px; font-weight: 700; }
+.kpi-texto { font-size: 13px; color: #6b7280; margin-top: 2px; }
+.kpi-alerta .kpi-numero { color: var(--rojo); }
+
+.graficas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.grafica-card {
+  background: white;
+  border-radius: 10px;
+  padding: 16px 18px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.grafica-card h3 { margin: 0 0 10px; font-size: 15px; }
+.grafica-caja { position: relative; height: 260px; }
+
+.titulo-seccion { margin: 24px 0 10px; font-size: 16px; }
+.tabla-scroll { overflow-x: auto; }
+.tabla-scroll table { min-width: 1300px; }
+
+/* ---- Analista: ficha de solo lectura ---- */
+.panel-liberacion { margin-bottom: 24px; }
+
+.campos-solo-lectura {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0 16px;
+}
+
+input:disabled {
+  background: #f3f4f6;
+  color: #374151;
+  cursor: not-allowed;
+}
+
+@media (max-width: 520px) {
+  .graficas { grid-template-columns: 1fr; }
+}

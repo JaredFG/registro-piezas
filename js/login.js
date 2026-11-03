@@ -1,6 +1,7 @@
 import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { auth, db } from "./firebase-init.js";
+import { normalizarRol, PAGINA_POR_ROL } from "./roles.js";
 
 const form = document.getElementById("form-login");
 const mensaje = document.getElementById("mensaje");
@@ -41,11 +42,9 @@ form.addEventListener("submit", async (e) => {
       return;
     }
 
-    const rol = usuarioDoc.data().rol;
-    if (rol === "ejecutivo") {
-      window.location.href = "dashboard.html";
-    } else if (rol === "operador" || rol === "trabajador") {
-      window.location.href = "registro.html";
+    const destino = PAGINA_POR_ROL[normalizarRol(usuarioDoc.data().rol)];
+    if (destino) {
+      window.location.href = destino;
     } else {
       mostrarMensaje("Rol no reconocido. Contacta al administrador.", "error");
     }
