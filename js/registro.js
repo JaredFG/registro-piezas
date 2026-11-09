@@ -82,7 +82,7 @@ function actualizarNiveles() {
 
   const medidas = medidasCapturadas();
   const aviso = campo("tamano-pieza");
-  if (medidas === "") aviso.textContent = "Sin medidas: pendiente de medir. Se recomienda como pieza chica.";
+  if (medidas === "") aviso.textContent = "Sin medidas: pendiente de medir.";
   else if (medidas === null) aviso.textContent = "Completa las tres medidas con valores mayores a cero.";
   else aviso.textContent = tamano === "chica" ? "Pieza chica: niveles N0 a N3." : "Pieza grande: niveles N4 y N5.";
 }
@@ -104,6 +104,7 @@ function ubicacionElegida() {
 // Si el operador cambia el rack a mano, la recomendación ya no sobrescribe su elección.
 let ubicacionManual = false;
 let consultaRecomendacion = 0;
+const TEXTO_FALTAN_DATOS = "Captura el cliente, el estándar y las tres medidas para recibir una recomendación de rack.";
 
 function mostrarRecomendacion(texto, ubicacion) {
   const caja = campo("recomendacion");
@@ -262,8 +263,10 @@ function iniciarRecomendaciones(usuario) {
     actualizarNiveles();
     const cliente = campo("cliente").value.trim();
     const estandar = campo("estandar-pieza").value.trim();
-    if (!cliente || !estandar) {
-      mostrarRecomendacion("Captura el cliente y el estándar para recibir una recomendación de rack.");
+    if (!cliente || !estandar || !tamanoActual()) {
+      consultaRecomendacion++;
+      mostrarRecomendacion(TEXTO_FALTAN_DATOS);
+      if (!ubicacionManual) ponerUbicacion("");
       return;
     }
 
