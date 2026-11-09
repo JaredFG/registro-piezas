@@ -3,5 +3,6 @@
 export const EQUIPOS = [
   "Rosaura Michelle",
   "Jimena Navarro",
-  "Alejandro Martinez"
+  "Alejandro Martinez",
+  "Plus"
 ];

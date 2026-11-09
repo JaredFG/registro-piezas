@@ -15,6 +15,11 @@ const PLANTILLA = `
     <div><label for="f-zona-destino">Zona destino</label><select id="f-zona-destino"><option value="">Todas</option></select></div>
     <div><label for="f-operador">Operador</label><input type="text" id="f-operador" placeholder="Nombre..." /></div>
     <div><label for="f-cliente">Cliente</label><input type="text" id="f-cliente" placeholder="Cliente..." /></div>
+    <div><label for="f-op">OP</label><input type="text" id="f-op" placeholder="OP..." /></div>
+    <div><label for="f-factura">Factura</label><input type="text" id="f-factura" placeholder="Factura..." /></div>
+    <div><label for="f-piezas">Piezas</label><input type="text" id="f-piezas" placeholder="Piezas..." /></div>
+    <div><label for="f-factura-desde">Fecha factura desde</label><input type="date" id="f-factura-desde" /></div>
+    <div><label for="f-factura-hasta">Fecha factura hasta</label><input type="date" id="f-factura-hasta" /></div>
     <div><label for="f-desde">Desde</label><input type="date" id="f-desde" /></div>
     <div><label for="f-hasta">Hasta</label><input type="date" id="f-hasta" /></div>
     <div><button id="btn-filtrar">Filtrar</button></div>
@@ -101,9 +106,24 @@ export function iniciarDashboard(idContenedor) {
       zonaDestino: el("f-zona-destino").value,
       operador: el("f-operador").value.trim().toLowerCase(),
       cliente: el("f-cliente").value.trim().toLowerCase(),
+      op: el("f-op").value.trim().toLowerCase(),
+      factura: el("f-factura").value.trim(),
+      piezas: el("f-piezas").value.trim().toLowerCase(),
+      facturaDesde: el("f-factura-desde").value,
+      facturaHasta: el("f-factura-hasta").value,
       desde: el("f-desde").value,
       hasta: el("f-hasta").value
     };
+  }
+
+  // Filtros de los campos de la pieza (OP, factura, piezas, fecha de factura): sirven igual para un registro o para una ficha.
+  function cumpleCamposNuevos(x, f) {
+    if (f.op && !String(x.op ?? "").toLowerCase().includes(f.op)) return false;
+    if (f.factura && !String(x.factura ?? "").includes(f.factura)) return false;
+    if (f.piezas && !String(x.piezas ?? "").toLowerCase().includes(f.piezas)) return false;
+    if (f.facturaDesde && !(x.fechaFactura && x.fechaFactura >= f.facturaDesde)) return false;
+    if (f.facturaHasta && !(x.fechaFactura && x.fechaFactura <= f.facturaHasta)) return false;
+    return true;
   }
 
   function filtrarRegistros(f) {
@@ -114,6 +134,7 @@ export function iniciarDashboard(idContenedor) {
       if (f.zonaDestino && r.zonaDestino !== f.zonaDestino) return false;
       if (f.operador && !nombreOperadorDe(r).toLowerCase().includes(f.operador)) return false;
       if (f.cliente && !(r.cliente || "").toLowerCase().includes(f.cliente)) return false;
+      if (!cumpleCamposNuevos(r, f)) return false;
       if (r.creadoEn) {
         const fecha = r.creadoEn.toDate();
         if (f.desde && fecha < new Date(f.desde + "T00:00:00")) return false;
@@ -129,6 +150,7 @@ export function iniciarDashboard(idContenedor) {
       if (f.folio && !(p.folio || "").toLowerCase().includes(f.folio)) return false;
       if (f.equipo && p.equipo !== f.equipo) return false;
       if (f.cliente && !(p.cliente || "").toLowerCase().includes(f.cliente)) return false;
+      if (!cumpleCamposNuevos(p, f)) return false;
       return true;
     });
   }
@@ -232,6 +254,8 @@ export function iniciarDashboard(idContenedor) {
         <td>${escaparHtml(r.estandarPieza ?? r.nombrePieza)}</td>
         <td>${escaparHtml(r.cliente)}</td>
         <td>${escaparHtml(r.material)}</td>
+        <td>${escaparHtml(r.fechaFactura)}</td>
+        <td>${escaparHtml(r.piezas)}</td>
         <td>${escaparHtml(r.cantidad)}</td>
         <td>${escaparHtml(r.factura)}</td>
         <td>${escaparHtml(r.medidas)}</td>
@@ -241,6 +265,7 @@ export function iniciarDashboard(idContenedor) {
         <td>${escaparHtml(r.equipo)}</td>
         <td>${escaparHtml(formatearFechaTexto(ficha?.fechaLiberacion))}</td>
         <td>${escaparHtml(r.comentarios)}</td>
+        <td>${escaparHtml(r.estado)}</td>
       </tr>`;
     }).join("");
     caja.innerHTML = `
@@ -248,9 +273,9 @@ export function iniciarDashboard(idContenedor) {
       <table>
         <thead>
           <tr>
-            <th>Fecha y hora</th><th>Folio</th><th>OP</th><th>Estándar</th><th>Cliente</th><th>Material</th>
+            <th>Fecha y hora</th><th>Folio</th><th>OP</th><th>Estándar</th><th>Cliente</th><th>Material</th><th>Fecha factura</th><th>Piezas</th>
             <th>Cantidad</th><th>Factura</th><th>Medidas</th><th>Zona origen</th><th>Zona destino</th>
-            <th>Operador</th><th>Equipo</th><th>Fecha liberación</th><th>Comentarios</th>
+            <th>Operador</th><th>Equipo</th><th>Fecha liberación</th><th>Comentarios</th><th>Estado de las piezas</th>
           </tr>
         </thead>
         <tbody>${filas}</tbody>
@@ -275,7 +300,7 @@ export function iniciarDashboard(idContenedor) {
 
   el("btn-filtrar").addEventListener("click", actualizar);
   el("btn-limpiar").addEventListener("click", () => {
-    ["f-folio", "f-equipo", "f-zona-origen", "f-zona-destino", "f-operador", "f-cliente", "f-desde", "f-hasta"]
+    ["f-folio", "f-equipo", "f-zona-origen", "f-zona-destino", "f-operador", "f-cliente", "f-op", "f-factura", "f-piezas", "f-factura-desde", "f-factura-hasta", "f-desde", "f-hasta"]
       .forEach(id => { el(id).value = ""; });
     actualizar();
   });

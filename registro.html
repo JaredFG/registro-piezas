@@ -28,7 +28,7 @@
         </div>
         <div id="estado-folio" class="estado-folio"></div>
 
-        <div class="fila-dos">
+        <div class="fila-tres">
           <div>
             <label for="op">OP</label>
             <input type="text" id="op" />
@@ -37,10 +37,22 @@
             <label for="estandar-pieza">Estándar de la pieza</label>
             <input type="text" id="estandar-pieza" required />
           </div>
+          <div>
+            <label for="piezas">Piezas</label>
+            <input type="text" id="piezas" placeholder="Ej. 120,5,300" autocomplete="off" />
         </div>
+      </div>
 
-        <label for="cliente">Cliente</label>
-        <input type="text" id="cliente" />
+        <div class="fila-dos">
+          <div>
+            <label for="cliente">Cliente</label>
+            <input type="text" id="cliente" />
+          </div>
+          <div>
+            <label for="fecha-factura">Fecha de factura</label>
+            <input type="date" id="fecha-factura" />
+         </div>
+      </div>
 
         <div class="fila-dos">
           <div>
@@ -81,6 +93,9 @@
 
         <label for="comentarios">Comentarios</label>
         <textarea id="comentarios"></textarea>
+        
+        <label for="estado">Estado piezas</label>
+        <textarea id="estado"></textarea>
 
         <button type="submit" class="primario">Registrar</button>
         <div id="mensaje" class="mensaje"></div>
