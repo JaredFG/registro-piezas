@@ -1,6 +1,7 @@
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+import { doc } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { auth, db } from "./firebase-init.js";
+import { leerPerfil } from "./lecturas.js";
 import { normalizarRol, PAGINA_POR_ROL } from "./roles.js";
 
 // Revisa que haya sesión y que el rol del usuario esté entre los permitidos para la página actual.
@@ -15,14 +16,19 @@ export function protegerPagina(rolesPermitidos) {
         return;
       }
 
-      const usuarioDoc = await getDoc(doc(db, "usuarios", user.uid));
-      if (!usuarioDoc.exists()) {
+      const datos = await leerPerfil(doc(db, "usuarios", user.uid), user.uid);
+      if (!datos) {
         await signOut(auth);
         window.location.href = "index.html";
         return;
       }
 
-      const datos = usuarioDoc.data();
+      // Sin perfil confirmado la página se muestra igual con lo guardado; las reglas siguen protegiendo los datos.
+      if (datos.sinConfirmar) {
+        resolve({ uid: user.uid, nombre: user.email, rol: permitidos[0], equipo: "", sinPerfil: true });
+        return;
+      }
+
       const rol = normalizarRol(datos.rol);
       if (!permitidos.includes(rol)) {
         const destino = PAGINA_POR_ROL[rol];

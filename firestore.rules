@@ -58,6 +58,24 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Pesos de prioridad: el primer operador de cada periodo los recalcula al registrar.
+    match /config/pesos {
+      allow read: if estaAutenticado();
+      allow write: if esOperador() || esAdministrador();
+    }
+
+    // Mapa de ubicaciones ocupadas: lo actualiza el operador al registrar un movimiento.
+    match /config/ocupacion {
+      allow read: if estaAutenticado();
+      allow write: if esOperador();
+    }
+
+    // Frecuencia del recálculo: solo la cambia el administrador.
+    match /config/ajustes {
+      allow read: if estaAutenticado();
+      allow write: if esAdministrador();
+    }
+
     // Solo el operador crea registros. Administradores y analistas los leen (dashboard).
     // Nadie puede editar ni borrar registros ya creados.
     match /registros/{registroId} {

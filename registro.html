@@ -40,19 +40,19 @@
           <div>
             <label for="piezas">Piezas</label>
             <input type="text" id="piezas" placeholder="Ej. 120,5,300" autocomplete="off" />
+          </div>
         </div>
-      </div>
 
         <div class="fila-dos">
           <div>
             <label for="cliente">Cliente</label>
-            <input type="text" id="cliente" />
+            <input type="text" id="cliente" required />
           </div>
           <div>
             <label for="fecha-factura">Fecha de factura</label>
             <input type="date" id="fecha-factura" />
-         </div>
-      </div>
+          </div>
+        </div>
 
         <div class="fila-dos">
           <div>
@@ -65,16 +65,18 @@
           </div>
         </div>
 
-        <div class="fila-dos">
-          <div>
-            <label for="factura">Factura</label>
-            <input type="number" id="factura" min="0" step="1" inputmode="numeric" />
+        <label for="factura">Factura</label>
+        <input type="number" id="factura" min="0" step="1" inputmode="numeric" />
+
+        <fieldset class="medidas-grupo">
+          <legend>Medidas en pulgadas (largo × ancho × alto)</legend>
+          <div class="fila-tres">
+            <div><label for="medida-largo">Largo</label><input type="number" id="medida-largo" min="0" step="any" /></div>
+            <div><label for="medida-ancho">Ancho</label><input type="number" id="medida-ancho" min="0" step="any" /></div>
+            <div><label for="medida-alto">Alto</label><input type="number" id="medida-alto" min="0" step="any" /></div>
           </div>
-          <div>
-            <label for="medidas">Medidas</label>
-            <input type="text" id="medidas" placeholder="Ej. 120x80x45" autocomplete="off" />
-          </div>
-        </div>
+          <div id="tamano-pieza" class="estado-folio"></div>
+        </fieldset>
 
         <div class="fila-dos">
           <div>
@@ -87,18 +89,32 @@
           </div>
         </div>
 
-        <div class="img-zoom-container">
-          <img id="myimage" src="zona.png" alt="Plano de zonas" />
+        <div id="bloque-origen-rack" hidden>
+          <div class="fila-tres">
+            <div><label for="origen-letra">Rack de origen</label><select id="origen-letra"></select></div>
+            <div><label for="origen-posicion">Posición de origen</label><select id="origen-posicion"></select></div>
+            <div><label for="origen-nivel">Nivel de origen</label><select id="origen-nivel"></select></div>
+          </div>
+        </div>
+
+        <div id="bloque-rack">
+          <div id="recomendacion" class="recomendacion">Captura el cliente y el estándar para recibir una recomendación de rack.</div>
+          <div class="fila-tres">
+            <div><label for="rack-letra">Rack</label><select id="rack-letra"></select></div>
+            <div><label for="rack-posicion">Posición</label><select id="rack-posicion"></select></div>
+            <div><label for="rack-nivel">Nivel</label><select id="rack-nivel"></select></div>
+          </div>
         </div>
 
         <label for="comentarios">Comentarios</label>
         <textarea id="comentarios"></textarea>
-        
+
         <label for="estado">Estado piezas</label>
         <textarea id="estado"></textarea>
 
         <button type="submit" class="primario">Registrar</button>
         <div id="mensaje" class="mensaje"></div>
+        <div id="cola-pendiente" class="estado-folio"></div>
       </form>
     </div>
   </div>

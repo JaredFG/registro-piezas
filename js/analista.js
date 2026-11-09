@@ -1,4 +1,5 @@
-import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+import { leerDocumento, esLimiteAgotado } from "./lecturas.js";
 import { db } from "./firebase-init.js";
 import { protegerPagina, configurarBotonSalir } from "./auth-guard.js";
 import { iniciarDashboard } from "./dashboard-comun.js";
@@ -76,7 +77,7 @@ protegerPagina("analista").then((usuario) => {
 
     mostrarEstadoFolio("Buscando folio...", "");
     try {
-      const ficha = await getDoc(doc(db, "piezas", folio));
+      const ficha = await leerDocumento(doc(db, "piezas", folio));
       if (campoFolio.value !== folio) return;
 
       if (!ficha.exists()) {
@@ -109,7 +110,9 @@ protegerPagina("analista").then((usuario) => {
       mostrarMensaje(`Fecha de liberación del folio ${folioActual} guardada.`, "ok");
       dashboard.recargar();
     } catch (error) {
-      mostrarMensaje("No se pudo guardar la fecha. Intenta de nuevo.", "error");
+      mostrarMensaje(esLimiteAgotado(error)
+        ? "Se agotó el límite diario de Firebase. La fecha no se guardó: inténtalo después del restablecimiento."
+        : "No se pudo guardar la fecha. Intenta de nuevo.", "error");
     }
     botonGuardar.disabled = false;
   });

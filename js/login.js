@@ -1,7 +1,8 @@
 import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence, browserSessionPersistence, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+import { doc } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { auth, db } from "./firebase-init.js";
 import { normalizarRol, PAGINA_POR_ROL } from "./roles.js";
+import { leerPerfil } from "./lecturas.js";
 
 const form = document.getElementById("form-login");
 const mensaje = document.getElementById("mensaje");
@@ -54,13 +55,17 @@ form.addEventListener("submit", async (e) => {
     const credencial = await signInWithEmailAndPassword(auth, correo, contrasena);
     const uid = credencial.user.uid;
 
-    const usuarioDoc = await getDoc(doc(db, "usuarios", uid));
-    if (!usuarioDoc.exists()) {
+    const perfil = await leerPerfil(doc(db, "usuarios", uid), uid);
+    if (!perfil) {
       mostrarMensaje("Tu cuenta no tiene un perfil asignado. Contacta al administrador.", "error");
       return;
     }
+    if (perfil.sinConfirmar) {
+      mostrarMensaje("Tu contraseña es correcta, pero Firebase no responde por ahora. Intenta de nuevo más tarde.", "error");
+      return;
+    }
 
-    const destino = PAGINA_POR_ROL[normalizarRol(usuarioDoc.data().rol)];
+    const destino = PAGINA_POR_ROL[normalizarRol(perfil.rol)];
     if (destino) {
       window.location.href = destino;
     } else {
@@ -75,9 +80,9 @@ form.addEventListener("submit", async (e) => {
 onAuthStateChanged(auth, async (user) => {
   if (!user) return;
   try {
-    const usuarioDoc = await getDoc(doc(db, "usuarios", user.uid));
-    if (!usuarioDoc.exists()) return;
-    const destino = PAGINA_POR_ROL[normalizarRol(usuarioDoc.data().rol)];
+    const perfil = await leerPerfil(doc(db, "usuarios", user.uid), user.uid);
+    if (!perfil || perfil.sinConfirmar) return;
+    const destino = PAGINA_POR_ROL[normalizarRol(perfil.rol)];
     if (destino) window.location.href = destino;
   } catch (error) {
     // Si falla la consulta, se queda en el login para que inicie sesión a mano.

@@ -1,8 +1,9 @@
-import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+import { collection, doc, setDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { db } from "./firebase-init.js";
-import { ZONAS_ORIGEN, ZONAS_DESTINO } from "./zonas.js";
+import { leerDocumento, leerColeccion } from "./lecturas.js";
 import { EQUIPOS } from "./equipos.js";
 import { medidasPendientes } from "./medidas.js";
+import { RACKS, POSICIONES, NIVELES, FRECUENCIAS, FRECUENCIA_DEFAULT, idUbicacion } from "./optimizacion.js";
 
 // Dashboard compartido por administradores y analistas: filtros, gráficas y tabla.
 // Se pinta dentro del elemento con el id que se le pase y devuelve { recargar }.
@@ -11,8 +12,8 @@ const PLANTILLA = `
   <div class="filtros">
     <div><label for="f-folio">Folio</label><input type="text" id="f-folio" placeholder="Buscar folio..." /></div>
     <div><label for="f-equipo">Equipo</label><select id="f-equipo"><option value="">Todos</option></select></div>
-    <div><label for="f-zona-origen">Zona origen</label><select id="f-zona-origen"><option value="">Todas</option></select></div>
-    <div><label for="f-zona-destino">Zona destino</label><select id="f-zona-destino"><option value="">Todas</option></select></div>
+    <div><label for="f-zona-origen">Zona origen</label><input type="text" id="f-zona-origen" placeholder="Ej. A1-N0..." /></div>
+    <div><label for="f-zona-destino">Zona destino</label><input type="text" id="f-zona-destino" placeholder="Ej. A1-N0..." /></div>
     <div><label for="f-operador">Operador</label><input type="text" id="f-operador" placeholder="Nombre..." /></div>
     <div><label for="f-cliente">Cliente</label><input type="text" id="f-cliente" placeholder="Cliente..." /></div>
     <div><label for="f-op">OP</label><input type="text" id="f-op" placeholder="OP..." /></div>
@@ -30,6 +31,27 @@ const PLANTILLA = `
     <div class="kpi"><span class="kpi-numero" id="kpi-folios">–</span><span class="kpi-texto">Folios preparados</span></div>
     <div class="kpi"><span class="kpi-numero" id="kpi-movimientos">–</span><span class="kpi-texto">Movimientos registrados</span></div>
     <div class="kpi kpi-alerta"><span class="kpi-numero" id="kpi-pendientes">–</span><span class="kpi-texto">Folios pendientes de medir</span></div>
+  </div>
+
+  <h3 class="titulo-seccion">Racks</h3>
+  <div class="rack-panel">
+    <div class="rack-encabezado">
+      <div id="rack-resumen">Cargando racks...</div>
+      <div id="rack-config"></div>
+    </div>
+    <div class="rack-cuerpo">
+      <div class="rack-mapa" id="rack-mapa"></div>
+      <div class="rack-lateral">
+        <h4>Niveles</h4>
+        <div id="rack-niveles"></div>
+        <div class="rack-simbologia">
+          <div><i></i> Disponible</div>
+          <div><i class="parcial"></i> Parcialmente ocupado</div>
+          <div><i class="ocupado"></i> Ocupado</div>
+        </div>
+      </div>
+    </div>
+    <div class="rack-detalle" id="rack-detalle"></div>
   </div>
 
   <div class="graficas">
@@ -75,7 +97,7 @@ function claveDia(timestamp) {
 const nombreOperadorDe = (r) => r.nombreOperador ?? r.nombreTrabajador ?? "";
 const equipoDe = (r) => r.equipo || "Sin equipo";
 
-export function iniciarDashboard(idContenedor) {
+export function iniciarDashboard(idContenedor, { puedeConfigurar = false } = {}) {
   const raiz = document.getElementById(idContenedor);
   raiz.innerHTML = PLANTILLA;
 
@@ -84,6 +106,9 @@ export function iniciarDashboard(idContenedor) {
   let piezas = [];
   let piezaPorFolio = new Map();
   const graficas = {};
+  let ocupadas = {};
+  let nivelActivo = null;
+  let posicionActiva = null;
 
   function llenarSelect(id, valores) {
     const select = el(id);
@@ -95,15 +120,13 @@ export function iniciarDashboard(idContenedor) {
     });
   }
   llenarSelect("f-equipo", EQUIPOS);
-  llenarSelect("f-zona-origen", ZONAS_ORIGEN);
-  llenarSelect("f-zona-destino", ZONAS_DESTINO);
 
   function leerFiltros() {
     return {
       folio: el("f-folio").value.trim().toLowerCase(),
       equipo: el("f-equipo").value,
-      zonaOrigen: el("f-zona-origen").value,
-      zonaDestino: el("f-zona-destino").value,
+      zonaOrigen: el("f-zona-origen").value.trim().toLowerCase(),
+      zonaDestino: el("f-zona-destino").value.trim().toLowerCase(),
       operador: el("f-operador").value.trim().toLowerCase(),
       cliente: el("f-cliente").value.trim().toLowerCase(),
       op: el("f-op").value.trim().toLowerCase(),
@@ -130,8 +153,8 @@ export function iniciarDashboard(idContenedor) {
     return registros.filter(r => {
       if (f.folio && !(r.folio || "").toLowerCase().includes(f.folio)) return false;
       if (f.equipo && r.equipo !== f.equipo) return false;
-      if (f.zonaOrigen && r.zonaOrigen !== f.zonaOrigen) return false;
-      if (f.zonaDestino && r.zonaDestino !== f.zonaDestino) return false;
+      if (f.zonaOrigen && !(r.zonaOrigen || "").toLowerCase().includes(f.zonaOrigen)) return false;
+      if (f.zonaDestino && !(r.zonaDestino || "").toLowerCase().includes(f.zonaDestino)) return false;
       if (f.operador && !nombreOperadorDe(r).toLowerCase().includes(f.operador)) return false;
       if (f.cliente && !(r.cliente || "").toLowerCase().includes(f.cliente)) return false;
       if (!cumpleCamposNuevos(r, f)) return false;
@@ -232,10 +255,12 @@ export function iniciarDashboard(idContenedor) {
         <td>${escaparHtml(p.equipo || "Sin equipo")}</td>
       </tr>`).join("");
     caja.innerHTML = `
+      <div class="tabla-ajustable tabla-limitada">
       <table>
         <thead><tr><th>Folio</th><th>OP</th><th>Estándar</th><th>Cliente</th><th>Equipo</th></tr></thead>
         <tbody>${filas}</tbody>
-      </table>`;
+      </table>
+      </div>`;
   }
 
   function pintarTabla(filtrados) {
@@ -283,6 +308,133 @@ export function iniciarDashboard(idContenedor) {
       </div>`;
   }
 
+  function ocupadosDePosicion(rack, posicion) {
+    return NIVELES.filter(n => ocupadas[idUbicacion(rack, posicion, n)]).length;
+  }
+
+  function pintarDetalleRack() {
+    const caja = el("rack-detalle");
+    if (!posicionActiva) {
+      caja.innerHTML = '<div class="vacio">Elige una posición del mapa para ver sus folios.</div>';
+      return;
+    }
+    const { rack, posicion } = posicionActiva;
+    const filas = [...NIVELES].reverse().map(n => {
+      const folio = ocupadas[idUbicacion(rack, posicion, n)];
+      if (!folio) return `<tr><td>N${n}</td><td colspan="8">Disponible</td></tr>`;
+      const p = piezaPorFolio.get(folio) || {};
+      return `
+      <tr>
+        <td>N${n}</td>
+        <td>${escaparHtml(folio)}</td>
+        <td>${escaparHtml(p.piezas)}</td>
+        <td>${escaparHtml(p.cantidad)}</td>
+        <td>${escaparHtml(p.cliente)}</td>
+        <td>${escaparHtml(p.estandar ?? p.nombre)}</td>
+        <td>${escaparHtml(p.op)}</td>
+        <td>${escaparHtml(p.medidas || "Pendiente")}</td>
+        <td>${escaparHtml(p.equipo)}</td>
+      </tr>`;
+    }).join("");
+    caja.innerHTML = `
+      <h4>Posición ${rack}${posicion}</h4>
+      <div class="tabla-ajustable">
+      <table>
+        <thead><tr><th>Nivel</th><th>Folio</th><th>Piezas</th><th>Cantidad</th><th>Cliente</th><th>Estándar</th><th>OP</th><th>Medidas</th><th>Equipo</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+      </div>`;
+  }
+
+  function pintarMapaRacks() {
+    const totalNivel = RACKS.length * POSICIONES;
+    const total = totalNivel * NIVELES.length;
+    const ids = Object.keys(ocupadas);
+    el("rack-resumen").textContent =
+      `${ids.length} de ${total} ubicaciones ocupadas (${Math.round((ids.length / total) * 100)}%).`;
+
+    const encabezados = RACKS.map(rack => {
+      const conteo = ids.filter(id => id.startsWith(rack)).length;
+      return `<th scope="col">${rack}<small>${Math.round((conteo / (POSICIONES * NIVELES.length)) * 100)}%</small></th>`;
+    }).join("");
+
+    const filas = Array.from({ length: POSICIONES }, (_, i) => i + 1).map(posicion => {
+      const celdas = RACKS.map(rack => {
+        const llenos = ocupadosDePosicion(rack, posicion);
+        const estado = nivelActivo === null
+          ? (llenos === 0 ? "" : llenos === NIVELES.length ? "ocupado" : "parcial")
+          : (ocupadas[idUbicacion(rack, posicion, nivelActivo)] ? "ocupado" : "");
+        const activa = posicionActiva?.rack === rack && posicionActiva?.posicion === posicion ? "activa" : "";
+        return `<td><button type="button" class="rack-celda ${estado} ${activa}" data-rack="${rack}" data-posicion="${posicion}" title="${llenos} de ${NIVELES.length} niveles ocupados">${rack}${posicion}</button></td>`;
+      }).join("");
+      return `<tr>${celdas}</tr>`;
+    }).join("");
+    el("rack-mapa").innerHTML = `<table><thead><tr>${encabezados}</tr></thead><tbody>${filas}</tbody></table>`;
+
+    const botonNivel = (nivel, etiqueta, ocupados, capacidad) => `
+      <button type="button" class="rack-nivel ${nivelActivo === nivel ? "activo" : ""}" data-nivel="${nivel ?? ""}">
+        <span>${etiqueta}</span>
+        <span class="rack-barra"><span style="width:${(ocupados / capacidad) * 100}%"></span></span>
+        <span>${Math.round((ocupados / capacidad) * 100)}%</span>
+      </button>`;
+    el("rack-niveles").innerHTML = botonNivel(null, "Todos", ids.length, total) +
+      [...NIVELES].reverse().map(n => botonNivel(n, `N${n}`, ids.filter(id => id.endsWith(`-N${n}`)).length, totalNivel)).join("");
+
+    pintarDetalleRack();
+  }
+
+  el("rack-mapa").addEventListener("click", (e) => {
+    const celda = e.target.closest(".rack-celda");
+    if (!celda) return;
+    posicionActiva = { rack: celda.dataset.rack, posicion: Number(celda.dataset.posicion) };
+    pintarMapaRacks();
+  });
+
+  el("rack-niveles").addEventListener("click", (e) => {
+    const boton = e.target.closest(".rack-nivel");
+    if (!boton) return;
+    nivelActivo = boton.dataset.nivel === "" ? null : Number(boton.dataset.nivel);
+    pintarMapaRacks();
+  });
+
+  function pintarConfiguracion(frecuencia, pesos) {
+    const calculados = pesos?.periodo ? `Pesos del periodo ${escaparHtml(pesos.periodo)}.` : "Pesos sin calcular.";
+    if (!puedeConfigurar) {
+      el("rack-config").textContent = calculados;
+      return;
+    }
+    const opciones = Object.entries(FRECUENCIAS)
+      .map(([valor, texto]) => `<option value="${valor}" ${valor === frecuencia ? "selected" : ""}>${texto}</option>`).join("");
+    el("rack-config").innerHTML = `
+      <label for="rack-frecuencia">Recalcular pesos</label>
+      <select id="rack-frecuencia">${opciones}</select>
+      <div>${calculados}</div>`;
+    el("rack-frecuencia").addEventListener("change", async (e) => {
+      try {
+        await setDoc(doc(db, "config", "ajustes"), { frecuencia: e.target.value }, { merge: true });
+      } catch (error) {
+        console.error("No se pudo guardar la frecuencia:", error);
+        alert("No se pudo guardar la frecuencia.");
+      }
+    });
+  }
+
+  async function recargarRacks() {
+    try {
+      const [ocupacion, pesos, ajustes] = await Promise.all([
+        leerDocumento(doc(db, "config", "ocupacion")),
+        leerDocumento(doc(db, "config", "pesos")),
+        leerDocumento(doc(db, "config", "ajustes"))
+      ]);
+      ocupadas = ocupacion.data()?.ubicaciones || {};
+      pintarMapaRacks();
+      pintarConfiguracion(ajustes.data()?.frecuencia || FRECUENCIA_DEFAULT, pesos.data());
+    } catch (error) {
+      console.error("No se pudieron cargar los racks:", error);
+      el("rack-resumen").textContent = "No se pudieron cargar los racks.";
+    }
+  }
+
   function actualizar() {
     const f = leerFiltros();
     const filtrados = filtrarRegistros(f);
@@ -308,8 +460,8 @@ export function iniciarDashboard(idContenedor) {
   async function recargar() {
     try {
       const [snapRegistros, snapPiezas] = await Promise.all([
-        getDocs(query(collection(db, "registros"), orderBy("creadoEn", "desc"))),
-        getDocs(collection(db, "piezas"))
+        leerColeccion(query(collection(db, "registros"), orderBy("creadoEn", "desc"))),
+        leerColeccion(collection(db, "piezas"))
       ]);
       registros = snapRegistros.docs.map(d => d.data());
       piezas = snapPiezas.docs.map(d => d.data());
@@ -318,6 +470,7 @@ export function iniciarDashboard(idContenedor) {
     } catch (error) {
       el("zona-tabla").innerHTML = '<div class="vacio">Error al cargar los registros.</div>';
     }
+    await recargarRacks();
   }
 
   recargar();
