@@ -1,4 +1,4 @@
-import { collection, doc, setDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+import { collection, doc, setDoc, query, orderBy, where, Timestamp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { db } from "./firebase-init.js";
 import { leerDocumento, leerColeccion } from "./lecturas.js";
 import { EQUIPOS } from "./equipos.js";
@@ -9,6 +9,11 @@ import { RACKS, POSICIONES, NIVELES, FRECUENCIAS, FRECUENCIA_DEFAULT, LARGO_NIVE
 // Se pinta dentro del elemento con el id que se le pase y devuelve { recargar }.
 
 const PLANTILLA = `
+  <div class="barra-actualizar">
+    <button type="button" id="btn-actualizar">Actualizar</button>
+    <button type="button" id="btn-recarga-completa" class="secundario">Recarga completa</button>
+    <span id="estado-actualizacion" class="estado-folio"></span>
+  </div>
   <div class="filtros">
     <div><label for="f-folio">Pieza</label><input type="text" id="f-folio" placeholder="Buscar pieza..." /></div>
     <div><label for="f-equipo">Equipo</label><select id="f-equipo"><option value="">Todos</option></select></div>
@@ -484,6 +489,36 @@ export function iniciarDashboard(idContenedor, { puedeConfigurar = false } = {})
     actualizar();
   });
 
+  // ---- Carga y actualización ----
+  // La carga completa lee todo una vez. "Actualizar" solo pide lo que cambió desde la última lectura y lo mezcla:
+  // registros nuevos, fichas modificadas y la ocupación de los racks.
+  const INTERVALO_AUTOMATICO_MS = 2 * 60 * 1000;
+  let idsRegistros = new Set();
+  let cursores = { registros: 0, piezas: 0, liberaciones: 0 };
+  let ocupado = false;
+
+  const milis = (marca) => marca?.toMillis?.() || 0;
+  const maximo = (lista, campo) => lista.reduce((m, x) => Math.max(m, milis(x[campo])), 0);
+  const horaActual = () => new Date().toLocaleTimeString("es-MX");
+
+  function marcarCursores() {
+    cursores = {
+      registros: maximo(registros, "creadoEn"),
+      piezas: maximo(piezas, "actualizadoEn"),
+      liberaciones: maximo(piezas, "liberadoEn")
+    };
+  }
+
+  function mostrarEstado(texto) {
+    el("estado-actualizacion").textContent = texto;
+  }
+
+  function bloquear(valor) {
+    ocupado = valor;
+    el("btn-actualizar").disabled = valor;
+    el("btn-recarga-completa").disabled = valor;
+  }
+
   async function recargar() {
     try {
       const [snapRegistros, snapPiezas] = await Promise.all([
@@ -491,15 +526,76 @@ export function iniciarDashboard(idContenedor, { puedeConfigurar = false } = {})
         leerColeccion(collection(db, "piezas"))
       ]);
       registros = snapRegistros.docs.map(d => d.data());
+      idsRegistros = new Set(snapRegistros.docs.map(d => d.id));
       piezas = snapPiezas.docs.map(d => d.data());
       piezaPorFolio = new Map(piezas.map(p => [p.folio, p]));
+      marcarCursores();
       actualizar();
+      mostrarEstado(`Datos completos a las ${horaActual()}. Se actualiza solo cada 2 minutos.`);
     } catch (error) {
       el("zona-tabla").innerHTML = '<div class="vacio">Error al cargar los registros.</div>';
     }
     await recargarRacks();
   }
 
+  async function recargarOcupacion() {
+    const ocupacion = await leerDocumento(doc(db, "config", "ocupacion"));
+    ocupadas = ocupacion.data()?.ubicaciones || {};
+    pintarMapaRacks();
+  }
+
+  async function actualizarCambios() {
+    if (ocupado) return;
+    bloquear(true);
+    try {
+      if (!cursores.registros) {
+        await recargar();
+        return;
+      }
+      const desde = (ms) => Timestamp.fromMillis(ms);
+      const [snapRegistros, snapModificadas, snapLiberadas] = await Promise.all([
+        leerColeccion(query(collection(db, "registros"), where("creadoEn", ">=", desde(cursores.registros)), orderBy("creadoEn", "desc"))),
+        leerColeccion(query(collection(db, "piezas"), where("actualizadoEn", ">=", desde(cursores.piezas)))),
+        leerColeccion(query(collection(db, "piezas"), where("liberadoEn", ">=", desde(cursores.liberaciones))))
+      ]);
+
+      const nuevos = snapRegistros.docs.filter(d => !idsRegistros.has(d.id));
+      nuevos.forEach(d => idsRegistros.add(d.id));
+      if (nuevos.length) {
+        registros = [...nuevos.map(d => d.data()), ...registros].sort((a, b) => milis(b.creadoEn) - milis(a.creadoEn));
+      }
+      const cambiadas = [...snapModificadas.docs, ...snapLiberadas.docs].map(d => d.data());
+      cambiadas.forEach(p => piezaPorFolio.set(p.folio, p));
+      if (cambiadas.length) piezas = [...piezaPorFolio.values()];
+
+      marcarCursores();
+      actualizar();
+      await recargarOcupacion();
+      mostrarEstado(`Actualizado a las ${horaActual()}: ${nuevos.length} registro(s) nuevo(s). Se actualiza solo cada 2 minutos.`);
+    } catch (error) {
+      console.error("No se pudo actualizar:", error);
+      mostrarEstado("No se pudo actualizar. Inténtalo de nuevo en un momento.");
+    } finally {
+      bloquear(false);
+    }
+  }
+
+  async function recargaCompleta() {
+    if (ocupado) return;
+    bloquear(true);
+    mostrarEstado("Cargando todos los datos...");
+    try {
+      await recargar();
+    } finally {
+      bloquear(false);
+    }
+  }
+
+  el("btn-actualizar").addEventListener("click", actualizarCambios);
+  el("btn-recarga-completa").addEventListener("click", recargaCompleta);
+  // Solo se actualiza solo mientras la pestaña está a la vista.
+  setInterval(() => { if (document.visibilityState === "visible") actualizarCambios(); }, INTERVALO_AUTOMATICO_MS);
+
   recargar();
-  return { recargar };
+  return { recargar: actualizarCambios, recargarCompleto: recargaCompleta };
 }
