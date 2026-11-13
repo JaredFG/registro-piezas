@@ -10,9 +10,9 @@ import { RACKS, POSICIONES, NIVELES, FRECUENCIAS, FRECUENCIA_DEFAULT, LARGO_NIVE
 
 const PLANTILLA = `
   <div class="barra-actualizar">
-    <button type="button" id="btn-actualizar">Actualizar</button>
+    <button type="button" id="btn-actualizar">&#8635; Actualizar</button>
     <button type="button" id="btn-recarga-completa" class="secundario">Recarga completa</button>
-    <span id="estado-actualizacion" class="estado-folio"></span>
+    <span id="estado-actualizacion" class="estado-actualizacion"></span>
   </div>
   <div class="filtros">
     <div><label for="f-folio">Pieza</label><input type="text" id="f-folio" placeholder="Buscar pieza..." /></div>
@@ -531,7 +531,7 @@ export function iniciarDashboard(idContenedor, { puedeConfigurar = false } = {})
       piezaPorFolio = new Map(piezas.map(p => [p.folio, p]));
       marcarCursores();
       actualizar();
-      mostrarEstado(`Datos completos a las ${horaActual()}. Se actualiza solo cada 2 minutos.`);
+      mostrarEstado(`Datos completos a las ${horaActual()} · se actualiza solo cada 2 minutos`);
     } catch (error) {
       el("zona-tabla").innerHTML = '<div class="vacio">Error al cargar los registros.</div>';
     }
@@ -571,7 +571,7 @@ export function iniciarDashboard(idContenedor, { puedeConfigurar = false } = {})
       marcarCursores();
       actualizar();
       await recargarOcupacion();
-      mostrarEstado(`Actualizado a las ${horaActual()}: ${nuevos.length} registro(s) nuevo(s). Se actualiza solo cada 2 minutos.`);
+      mostrarEstado(`Actualizado a las ${horaActual()} · ${nuevos.length} ${nuevos.length === 1 ? "registro nuevo" : "registros nuevos"} · se actualiza solo cada 2 minutos`);
     } catch (error) {
       console.error("No se pudo actualizar:", error);
       mostrarEstado("No se pudo actualizar. Inténtalo de nuevo en un momento.");

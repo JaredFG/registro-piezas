@@ -468,6 +468,34 @@ input:disabled {
 .estante-leyenda i.abierta { background: #f87171; }
 
 /* ---- Barra de actualización del dashboard ---- */
-.barra-actualizar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-.barra-actualizar button.secundario { background: #fff; color: var(--rojo); border: 1px solid var(--rojo); }
+.barra-actualizar {
+  background: white;
+  border-radius: 10px;
+  padding: 12px 18px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.barra-actualizar button {
+  background: var(--rojo);
+  color: white;
+  border: 1px solid var(--rojo);
+  padding: 0 18px;
+  height: 38px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.barra-actualizar button.secundario { background: white; color: var(--rojo); }
+.barra-actualizar button:hover:not(:disabled) { filter: brightness(0.92); }
 .barra-actualizar button:disabled { opacity: 0.6; cursor: wait; }
+.barra-actualizar .estado-actualizacion {
+  margin-left: auto;
+  color: #6b7280;
+  font-size: 13px;
+  text-align: right;
+}
