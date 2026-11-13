@@ -3,9 +3,9 @@
 
 export const ZONA_RACK = "Rack";
 
-export const ZONAS_ORIGEN = ["Externo", ZONA_RACK];
+export const ZONAS_ORIGEN = ["Por preparar", ZONA_RACK];
 
-export const ZONAS_DESTINO = [ZONA_RACK, "Externo"];
+export const ZONAS_DESTINO = [ZONA_RACK, "Por preparar"];
 
 export function llenarSelectZonas(idSelect, zonas) {
   const select = document.getElementById(idSelect);

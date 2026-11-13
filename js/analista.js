@@ -43,7 +43,7 @@ function llenarFicha(p) {
   campo("piezas").value = p.piezas ?? "";
   campo("fecha-factura").value = p.fechaFactura || "";
   campo("factura").value = p.factura ?? "";
-  campo("medidas").value = p.medidas || "";
+  campo("medidas").value = p.tipo || p.medidas || "";
   campo("equipo").value = p.equipo || "";
   campo("ultima-zona").value = p.ultimaZona || "";
   campoFecha.value = p.fechaLiberacion || "";
@@ -71,24 +71,24 @@ protegerPagina("analista").then((usuario) => {
       return;
     }
     if (folio.includes("/") || folio === "." || folio === "..") {
-      mostrarEstadoFolio("El folio no puede llevar el carácter \"/\".", "");
+      mostrarEstadoFolio("La pieza no puede llevar el carácter \"/\".", "");
       return;
     }
 
-    mostrarEstadoFolio("Buscando folio...", "");
+    mostrarEstadoFolio("Buscando pieza...", "");
     try {
       const ficha = await leerDocumento(doc(db, "piezas", folio));
       if (campoFolio.value !== folio) return;
 
       if (!ficha.exists()) {
-        mostrarEstadoFolio("Ese folio todavía no ha sido registrado por un operador.", "");
+        mostrarEstadoFolio("Esa pieza todavía no ha sido registrada por un operador.", "");
         return;
       }
       folioActual = folio;
       llenarFicha(ficha.data());
       mostrarEstadoFolio("Pieza encontrada. Los datos son de solo lectura; puedes poner o actualizar la fecha de liberación.", "encontrado");
     } catch (error) {
-      mostrarEstadoFolio("No se pudo consultar el folio.", "");
+      mostrarEstadoFolio("No se pudo consultar la pieza.", "");
     }
   }
 
@@ -107,7 +107,7 @@ protegerPagina("analista").then((usuario) => {
         liberadoPor: usuario.nombre,
         liberadoEn: serverTimestamp()
       });
-      mostrarMensaje(`Fecha de liberación del folio ${folioActual} guardada.`, "ok");
+      mostrarMensaje(`Fecha de liberación de la pieza ${folioActual} guardada.`, "ok");
       dashboard.recargar();
     } catch (error) {
       mostrarMensaje(esLimiteAgotado(error)

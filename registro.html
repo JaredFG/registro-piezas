@@ -18,7 +18,7 @@
       <form id="form-registro">
         <div class="fila-dos">
           <div>
-            <label for="folio">Folio</label>
+            <label for="folio">Pieza</label>
             <input type="text" id="folio" required autocomplete="off" />
           </div>
           <div>
@@ -38,8 +38,8 @@
             <input type="text" id="estandar-pieza" required />
           </div>
           <div>
-            <label for="piezas">Piezas</label>
-            <input type="text" id="piezas" placeholder="Ej. 120,5,300" autocomplete="off" />
+            <label for="piezas">Folio (opcional)</label>
+            <input type="text" id="piezas" autocomplete="off" />
           </div>
         </div>
 
@@ -69,12 +69,8 @@
         <input type="number" id="factura" min="0" step="1" inputmode="numeric" />
 
         <fieldset class="medidas-grupo">
-          <legend>Medidas en pulgadas (largo × ancho × alto)</legend>
-          <div class="fila-tres">
-            <div><label for="medida-largo">Largo</label><input type="number" id="medida-largo" min="0" step="any" /></div>
-            <div><label for="medida-ancho">Ancho</label><input type="number" id="medida-ancho" min="0" step="any" /></div>
-            <div><label for="medida-alto">Alto</label><input type="number" id="medida-alto" min="0" step="any" /></div>
-          </div>
+          <legend>Tarima o caja</legend>
+          <select id="tipo-medida"></select>
           <div id="tamano-pieza" class="estado-folio"></div>
         </fieldset>
 
@@ -88,7 +84,9 @@
             <select id="zona-destino" required></select>
           </div>
         </div>
-
+        <div class="img-zoom-container">
+          <img id="myimage" src="zona.png" alt="Plano de zonas" />
+        </div>
         <div id="bloque-origen-rack" hidden>
           <div class="fila-tres">
             <div><label for="origen-letra">Rack de origen</label><select id="origen-letra"></select></div>
@@ -98,7 +96,32 @@
         </div>
 
         <div id="bloque-rack">
-          <div id="recomendacion" class="recomendacion">Captura el cliente, el estándar y las tres medidas para recibir una recomendación de rack.</div>
+          <div class="fila-tres">
+            <div>
+              <label for="estibable">¿Se puede estibar?</label>
+              <select id="estibable">
+                <option value="">Elige...</option>
+                <option value="si">Sí</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+            <div id="bloque-unica" hidden>
+              <label for="unica">¿Es una sola pieza?</label>
+              <select id="unica">
+                <option value="">Elige...</option>
+                <option value="si">Sí</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+            <div id="bloque-encima" hidden>
+              <label for="mas-encima">¿Caben más piezas encima?</label>
+              <select id="mas-encima">
+                <option value="si">Sí</option>
+                <option value="no">No, estiba completa</option>
+              </select>
+            </div>
+          </div>
+          <div id="recomendacion" class="recomendacion">Captura el cliente, el estándar, la tarima o caja y si se puede estibar para recibir una recomendación de rack.</div>
           <div class="fila-tres">
             <div><label for="rack-letra">Rack</label><select id="rack-letra"></select></div>
             <div><label for="rack-posicion">Posición</label><select id="rack-posicion"></select></div>

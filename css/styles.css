@@ -451,3 +451,18 @@ input:disabled {
   .rack-cuerpo { grid-template-columns: minmax(0, 1fr); }
   .fila-tres { grid-template-columns: 1fr; }
 }
+
+/* ---- Esquema del estante en el detalle de una posición ---- */
+.estante { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; max-width: 560px; }
+.estante-nivel { display: flex; align-items: stretch; gap: 8px; }
+.estante-etiqueta { width: 46px; font-weight: 600; display: flex; flex-direction: column; justify-content: center; }
+.estante-etiqueta small { font-weight: 400; color: #6b7280; font-size: 0.7rem; }
+.estante-barra { flex: 1; min-height: 34px; display: flex; gap: 2px; padding: 3px; background: #fff; border: 2px solid #9ca3af; border-radius: 4px; }
+.estante-barra.completa { border-color: var(--rojo); }
+.estante-tarima { display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; border-radius: 3px; min-width: 18px; }
+.estante-tarima.completa { background: var(--rojo); }
+.estante-tarima.abierta { background: #f87171; }
+.estante-leyenda { font-size: 0.8rem; color: #6b7280; }
+.estante-leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: middle; margin: 0 2px 0 8px; }
+.estante-leyenda i.completa { background: var(--rojo); }
+.estante-leyenda i.abierta { background: #f87171; }

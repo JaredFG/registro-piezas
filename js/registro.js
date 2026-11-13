@@ -2,10 +2,11 @@ import { collection, doc, setDoc, runTransaction, deleteField, serverTimestamp, 
 import { db } from "./firebase-init.js";
 import { leerDocumento, leerColeccion, esFallaTemporal } from "./lecturas.js";
 import { protegerPagina, configurarBotonSalir } from "./auth-guard.js";
-import { separarMedidas, unirMedidas } from "./medidas.js";
+import { CATALOGO, buscarMedida, medidasDeCatalogo } from "./catalogo.js";
 import { ZONA_RACK, ZONAS_ORIGEN, ZONAS_DESTINO, llenarSelectZonas } from "./zonas.js";
 import {
-  RACKS, POSICIONES, NIVELES, FRECUENCIA_DEFAULT, idUbicacion, parsearUbicacion, nivelesPermitidos,
+  RACKS, POSICIONES, NIVELES, FRECUENCIA_DEFAULT, LARGO_NIVEL, ANCHO_NIVEL, ALTURA_NIVEL, idUbicacion, parsearUbicacion,
+  nivelesPorEstiba, cabeEnRack, cabeEnNivel, parsearMedidas, largoDeMedidas, altoDeMedidas, modoDeColocacion, colocarEnCelda, retirarDeCelda, piezasDeCelda,
   tamanoDeMedidas, periodoDe, calcularPesos, recomendarUbicacion
 } from "./optimizacion.js";
 
@@ -24,7 +25,6 @@ const campoFolio = document.getElementById("folio");
 const estadoFolio = document.getElementById("estado-folio");
 
 const campo = (id) => document.getElementById(id);
-const ID_MEDIDAS = ["medida-largo", "medida-ancho", "medida-alto"];
 const refOcupacion = doc(db, "config", "ocupacion");
 const refPesos = doc(db, "config", "pesos");
 const refAjustes = doc(db, "config", "ajustes");
@@ -63,28 +63,47 @@ llenarOpciones(campo("origen-letra"), OPCIONES_RACK, "Elige...");
 llenarOpciones(campo("origen-posicion"), OPCIONES_POSICION, "Elige...");
 llenarOpciones(campo("origen-nivel"), NIVELES.map(n => ({ texto: `N${n}`, valor: n })), "Elige...");
 
+// Las medidas salen de la tarima o caja elegida. Una pieza registrada antes con medidas libres las conserva
+// mientras no se elija una opción.
+let medidasHeredadas = "";
+
+llenarOpciones(campo("tipo-medida"), CATALOGO.map(m => ({ texto: m.nombre, valor: m.nombre })), "Sin elegir (pendiente de medir)");
+
 function medidasCapturadas() {
-  return unirMedidas(ID_MEDIDAS.map(id => campo(id).value));
+  const opcion = buscarMedida(campo("tipo-medida").value);
+  return opcion ? medidasDeCatalogo(opcion) : medidasHeredadas;
 }
 
-function tamanoActual() {
-  const medidas = medidasCapturadas();
-  return medidas ? tamanoDeMedidas(medidas) : null;
+// Respuestas de estiba: estibable y unica son true, false o null (sin contestar).
+const aBooleano = (valor) => (valor === "si" ? true : valor === "no" ? false : null);
+const deBooleano = (valor) => (valor === true ? "si" : valor === false ? "no" : "");
+
+function estibaActual() {
+  const estibable = aBooleano(campo("estibable").value);
+  const unica = estibable === false ? aBooleano(campo("unica").value) : null;
+  return { estibable, unica, lista: estibable === true || (estibable === false && unica !== null) };
+}
+
+function actualizarBloquesEstiba() {
+  const { estibable } = estibaActual();
+  campo("bloque-unica").hidden = estibable !== false;
+  campo("bloque-encima").hidden = estibable !== true;
 }
 
 function actualizarNiveles() {
-  const tamano = tamanoActual();
+  const estiba = estibaActual();
   const select = campo("rack-nivel");
   const anterior = select.value;
-  const niveles = nivelesPermitidos(tamano);
+  const medidas = medidasCapturadas();
+  const niveles = (estiba.lista ? nivelesPorEstiba(estiba) : NIVELES).filter(n => !medidas || cabeEnNivel(medidas, n));
   llenarOpciones(select, niveles.map(n => ({ texto: `N${n}`, valor: n })), "Elige...");
   if (niveles.includes(Number(anterior)) && anterior !== "") select.value = anterior;
 
-  const medidas = medidasCapturadas();
   const aviso = campo("tamano-pieza");
-  if (medidas === "") aviso.textContent = "Sin medidas: pendiente de medir.";
-  else if (medidas === null) aviso.textContent = "Completa las tres medidas con valores mayores a cero.";
-  else aviso.textContent = tamano === "chica" ? "Pieza chica: niveles N0 a N3." : "Pieza grande: niveles N4 y N5.";
+  const m = parsearMedidas(medidas);
+  if (!m) aviso.textContent = "Sin tarima o caja: pendiente de medir.";
+  else if (!cabeEnRack(medidas)) aviso.textContent = `No cabe en un rack: pasa de ${LARGO_NIVEL} × ${ANCHO_NIVEL} pulgadas o de la altura de los niveles.`;
+  else aviso.textContent = `${m.largo} × ${m.ancho}${m.alto === null ? " (alto sin dato: lo confirma el operador)" : ` × ${m.alto}`} pulgadas.`;
 }
 
 function ponerUbicacion(ubicacion) {
@@ -104,7 +123,7 @@ function ubicacionElegida() {
 // Si el operador cambia el rack a mano, la recomendación ya no sobrescribe su elección.
 let ubicacionManual = false;
 let consultaRecomendacion = 0;
-const TEXTO_FALTAN_DATOS = "Captura el cliente, el estándar y las tres medidas para recibir una recomendación de rack.";
+const TEXTO_FALTAN_DATOS = "Captura el cliente, el estándar, la tarima o caja y si se puede estibar para recibir una recomendación de rack.";
 
 function mostrarRecomendacion(texto, ubicacion) {
   const caja = campo("recomendacion");
@@ -138,34 +157,59 @@ function guardarCola(usuario, cola) {
     : "";
 }
 
-function ocupadasEnCola(usuario) {
-  return Object.fromEntries(leerCola(usuario).filter(m => parsearUbicacion(m.zonaDestino)).map(m => [m.zonaDestino, m.folio]));
+function datosDeColocacion(m) {
+  return { pieza: m.folio, largo: largoDeMedidas(m.pieza.medidas), alto: altoDeMedidas(m.pieza.medidas), nivel: parsearUbicacion(m.zonaDestino)?.nivel, estibable: m.pieza.estibable === true, completa: m.pieza.masEncima === false };
 }
 
-// La ocupación, el movimiento y la ficha se guardan juntos, y dos operadores no pueden tomar el mismo lugar.
+// Aplica los registros pendientes de enviar sobre las ubicaciones leídas, para no recomendar un lugar que ya van a ocupar.
+function ubicacionesConCola(base, usuario) {
+  const ubicaciones = { ...base };
+  leerCola(usuario).forEach(m => {
+    quitarPieza(ubicaciones, m.folio, m.zonaOrigen);
+    if (!parsearUbicacion(m.zonaDestino)) return;
+    const datos = datosDeColocacion(m);
+    const colocacion = modoDeColocacion(ubicaciones[m.zonaDestino], datos);
+    if (colocacion) ubicaciones[m.zonaDestino] = colocarEnCelda(ubicaciones[m.zonaDestino], datos, colocacion);
+  });
+  return ubicaciones;
+}
+
+function quitarPieza(ubicaciones, pieza, zona) {
+  if (!parsearUbicacion(zona) || !(zona in ubicaciones)) return;
+  const nueva = retirarDeCelda(ubicaciones[zona], pieza);
+  if (nueva) ubicaciones[zona] = nueva;
+  else delete ubicaciones[zona];
+}
+
+// La ocupación, el movimiento y la ficha se guardan juntos, y dos operadores no pueden tomar el mismo espacio.
 function guardarMovimiento(m, usuario) {
   const refFicha = doc(db, "piezas", m.folio);
   const cuando = m.capturadoEn ? Timestamp.fromMillis(m.capturadoEn) : serverTimestamp();
   return runTransaction(db, async (tx) => {
     const ficha = await tx.get(refFicha);
     const ocupacion = await tx.get(refOcupacion);
-    const ubicaciones = ocupacion.data()?.ubicaciones || {};
+    const ubicaciones = { ...(ocupacion.data()?.ubicaciones || {}) };
     const anterior = ficha.data()?.ultimaZona;
     const esRack = Boolean(parsearUbicacion(m.zonaDestino));
 
-    if (esRack && ubicaciones[m.zonaDestino] && ubicaciones[m.zonaDestino] !== m.folio) {
-      const error = new Error("ubicacion-ocupada");
-      error.ocupadaPor = ubicaciones[m.zonaDestino];
-      throw error;
-    }
-
     const cambios = {};
-    if (parsearUbicacion(anterior) && anterior !== m.zonaDestino && ubicaciones[anterior] === m.folio) {
-      cambios[anterior] = deleteField();
+    if (parsearUbicacion(anterior) && anterior in ubicaciones) {
+      const nueva = retirarDeCelda(ubicaciones[anterior], m.folio);
+      if (nueva) ubicaciones[anterior] = nueva;
+      else delete ubicaciones[anterior];
+      cambios[anterior] = nueva ?? deleteField();
     }
-    if (esRack) cambios[m.zonaDestino] = m.folio;
+    if (esRack) {
+      const datos = datosDeColocacion(m);
+      const colocacion = modoDeColocacion(ubicaciones[m.zonaDestino], datos);
+      if (!colocacion) {
+        const error = new Error("ubicacion-ocupada");
+        error.ocupadaPor = piezasDeCelda(ubicaciones[m.zonaDestino]).join(", ");
+        throw error;
+      }
+      cambios[m.zonaDestino] = colocarEnCelda(ubicaciones[m.zonaDestino], datos, colocacion);
+    }
     if (Object.keys(cambios).length) tx.set(refOcupacion, { ubicaciones: cambios }, { merge: true });
-
     tx.set(doc(db, "registros", m.id), {
       folio: m.folio,
       op: m.pieza.op,
@@ -177,6 +221,10 @@ function guardarMovimiento(m, usuario) {
       fechaFactura: m.pieza.fechaFactura,
       factura: m.pieza.factura,
       medidas: m.pieza.medidas,
+      tipo: m.pieza.tipo,
+      estibable: m.pieza.estibable,
+      unica: m.pieza.unica,
+      masEncima: m.pieza.masEncima,
       equipo: usuario.equipo,
       zonaOrigen: m.zonaOrigen,
       zonaDestino: m.zonaDestino,
@@ -213,7 +261,7 @@ async function enviarCola(usuario) {
           if (!esFallaTemporal(error)) console.error("No se pudo enviar el registro pendiente:", error);
           break;
         }
-        mostrarMensaje(`El registro pendiente del folio ${movimiento.folio} no se guardó: ${movimiento.zonaDestino} ya la ocupó el folio ${error.ocupadaPor}. Captúralo de nuevo.`, "error");
+        mostrarMensaje(`El registro pendiente de la pieza ${movimiento.folio} no se guardó: ${movimiento.zonaDestino} ya no tiene espacio (ocupada por ${error.ocupadaPor}). Captúralo de nuevo.`, "error");
       }
       guardarCola(usuario, leerCola(usuario).filter(m => m.id !== movimiento.id));
     }
@@ -263,9 +311,18 @@ function iniciarRecomendaciones(usuario) {
     actualizarNiveles();
     const cliente = campo("cliente").value.trim();
     const estandar = campo("estandar-pieza").value.trim();
-    if (!cliente || !estandar || !tamanoActual()) {
+    const medidas = medidasCapturadas();
+    const estiba = estibaActual();
+    if (!cliente || !estandar || !medidas || !estiba.lista) {
       consultaRecomendacion++;
       mostrarRecomendacion(TEXTO_FALTAN_DATOS);
+      if (!ubicacionManual) ponerUbicacion("");
+      return;
+    }
+
+    if (!cabeEnRack(medidas)) {
+      consultaRecomendacion++;
+      mostrarRecomendacion(`Sin recomendación de rack: la pieza pasa de ${LARGO_NIVEL} × ${ANCHO_NIVEL} pulgadas o de la altura de los niveles.`);
       if (!ubicacionManual) ponerUbicacion("");
       return;
     }
@@ -276,14 +333,17 @@ function iniciarRecomendaciones(usuario) {
       const [pesos, ocupacion] = await Promise.all([obtenerPesos(), leerDocumento(refOcupacion)]);
       if (consulta !== consultaRecomendacion) return;
 
-      const ocupadas = { ...(ocupacion.data()?.ubicaciones || {}), ...ocupadasEnCola(usuario) };
-      const r = recomendarUbicacion({ cliente, estandar, tamano: tamanoActual() }, pesos, ocupadas);
+      const ocupadas = ubicacionesConCola(ocupacion.data()?.ubicaciones || {}, usuario);
+      const r = recomendarUbicacion({
+        cliente, estandar, estibable: estiba.estibable, unica: estiba.unica,
+        largo: largoDeMedidas(medidas), ancho: parsearMedidas(medidas).ancho, alto: altoDeMedidas(medidas)
+      }, pesos, ocupadas);
       if (!r.ubicacion) {
-        mostrarRecomendacion("No hay ubicaciones libres para este tamaño de pieza.");
+        mostrarRecomendacion("No hay ubicaciones con espacio para esta pieza en los niveles que le tocan por su estiba y su altura.");
         if (!ubicacionManual) ponerUbicacion("");
         return;
       }
-      mostrarRecomendacion(`Recomendado: ${r.ubicacion} (cliente ${r.prioridadCliente}, estándar ${r.prioridadEstandar}). `, r.ubicacion);
+      mostrarRecomendacion(`Recomendado: ${r.ubicacion} (cliente ${r.prioridadCliente}, estándar ${r.prioridadEstandar}${r.colocacion.modo === "encima" ? ", sobre una estiba abierta" : ""}). `, r.ubicacion);
       if (!ubicacionManual) ponerUbicacion(r.ubicacion);
     } catch (error) {
       console.error("No se pudo obtener la recomendación:", error);
@@ -328,14 +388,22 @@ function llenarDatosPieza(pieza) {
   campo("material").value = pieza.material || "";
   campo("cantidad").value = pieza.cantidad ?? "";
   campo("piezas").value = pieza.piezas ?? "";
+  campo("estibable").value = deBooleano(pieza.estibable);
+  campo("unica").value = deBooleano(pieza.unica);
+  campo("mas-encima").value = pieza.masEncima === false ? "no" : "si";
+  actualizarBloquesEstiba();
   campo("fecha-factura").value = pieza.fechaFactura || "";
   campo("factura").value = pieza.factura ?? "";
-  separarMedidas(pieza.medidas).forEach((valor, i) => { campo(ID_MEDIDAS[i]).value = valor; });
+  campo("tipo-medida").value = buscarMedida(pieza.tipo) ? buscarMedida(pieza.tipo).nombre : "";
+  medidasHeredadas = campo("tipo-medida").value ? "" : (pieza.medidas || "");
   ponerOrigen(pieza.ultimaZona);
 }
 
 function limpiarDatosPieza() {
-  ["op", "estandar-pieza", "cliente", "material", "cantidad", "piezas", "fecha-factura", "factura", ...ID_MEDIDAS].forEach(id => { campo(id).value = ""; });
+  ["op", "estandar-pieza", "cliente", "material", "cantidad", "piezas", "fecha-factura", "factura", "estibable", "unica", "tipo-medida"].forEach(id => { campo(id).value = ""; });
+  medidasHeredadas = "";
+  campo("mas-encima").value = "si";
+  actualizarBloquesEstiba();
   ponerOrigen("");
 }
 
@@ -366,11 +434,11 @@ protegerPagina("operador").then((usuario) => {
       return;
     }
     if (!folioValido(folio)) {
-      mostrarEstadoFolio("El folio no puede llevar el carácter \"/\".", "");
+      mostrarEstadoFolio("La pieza no puede llevar el carácter \"/\".", "");
       return;
     }
 
-    mostrarEstadoFolio("Buscando folio...", "");
+    mostrarEstadoFolio("Buscando pieza...", "");
     try {
       const ficha = await leerDocumento(doc(db, "piezas", folio));
       if (campoFolio.value !== folio) return;
@@ -384,16 +452,17 @@ protegerPagina("operador").then((usuario) => {
         if (datosAutollenados) limpiarDatosPieza();
         mostrarBloqueRack();
         datosAutollenados = false;
-        mostrarEstadoFolio("Folio nuevo: se creará la ficha de la pieza al registrar.", "nuevo");
+        mostrarEstadoFolio("Pieza nueva: se creará su ficha al registrar.", "nuevo");
       }
       actualizarRecomendacion();
     } catch (error) {
-      mostrarEstadoFolio("No se pudo consultar el folio. Llena los datos a mano.", "");
+      mostrarEstadoFolio("No se pudo consultar la pieza. Llena los datos a mano.", "");
     }
   }
 
   campoFolio.addEventListener("change", buscarFolio);
-  ["cliente", "estandar-pieza", ...ID_MEDIDAS].forEach(id => campo(id).addEventListener("change", actualizarRecomendacion));
+  ["cliente", "estandar-pieza", "estibable", "unica", "tipo-medida"].forEach(id => campo(id).addEventListener("change", actualizarRecomendacion));
+  campo("estibable").addEventListener("change", actualizarBloquesEstiba);
   ["rack-letra", "rack-posicion", "rack-nivel"].forEach(id => campo(id).addEventListener("change", () => { ubicacionManual = true; }));
   campo("zona-destino").addEventListener("change", mostrarBloqueRack);
   campo("zona-origen").addEventListener("change", mostrarBloqueRack);
@@ -411,15 +480,11 @@ protegerPagina("operador").then((usuario) => {
 
     const folio = normalizarFolio(campoFolio.value);
     if (!folioValido(folio)) {
-      mostrarMensaje("El folio no puede llevar el carácter \"/\".", "error");
+      mostrarMensaje("La pieza no puede llevar el carácter \"/\".", "error");
       return;
     }
 
     const medidas = medidasCapturadas();
-    if (medidas === null) {
-      mostrarMensaje("Completa las tres medidas con valores mayores a cero, o déjalas vacías.", "error");
-      return;
-    }
 
     const zonaOrigen = zonaOrigenElegida();
     if (!zonaOrigen) {
@@ -434,6 +499,26 @@ protegerPagina("operador").then((usuario) => {
       return;
     }
 
+    const estiba = estibaActual();
+    if (esRack) {
+      if (!medidas || !cabeEnRack(medidas)) {
+        mostrarMensaje(`Para ubicar la pieza en un rack elige la tarima o caja; debe caber en ${LARGO_NIVEL} × ${ANCHO_NIVEL} pulgadas y en la altura de algún nivel.`, "error");
+        return;
+      }
+      if (!estiba.lista) {
+        mostrarMensaje("Indica si la pieza se puede estibar y, si no, si es una sola pieza.", "error");
+        return;
+      }
+      if (!cabeEnNivel(medidas, Number(campo("rack-nivel").value))) {
+        mostrarMensaje(`La pieza no cabe en el nivel N${campo("rack-nivel").value}: su altura máxima es ${ALTURA_NIVEL[Number(campo("rack-nivel").value)]} pulgadas.`, "error");
+        return;
+      }
+      if (!nivelesPorEstiba(estiba).includes(Number(campo("rack-nivel").value))) {
+        mostrarMensaje(`Por su estiba, la pieza solo va en los niveles ${nivelesPorEstiba(estiba).map(n => "N" + n).join(" o ")}.`, "error");
+        return;
+      }
+    }
+
     const textoCantidad = campo("cantidad").value;
     const textoFactura = campo("factura").value;
     const pieza = {
@@ -446,7 +531,11 @@ protegerPagina("operador").then((usuario) => {
       fechaFactura: campo("fecha-factura").value,
       factura: textoFactura === "" ? null : Number(textoFactura),
       medidas,
-      tamano: tamanoDeMedidas(medidas)
+      tipo: campo("tipo-medida").value,
+      tamano: tamanoDeMedidas(medidas),
+      estibable: estiba.estibable,
+      unica: estiba.unica,
+      masEncima: estiba.estibable ? campo("mas-encima").value !== "no" : null
     };
     const movimiento = {
       id: doc(collection(db, "registros")).id,
@@ -459,17 +548,13 @@ protegerPagina("operador").then((usuario) => {
       capturadoEn: Date.now()
     };
 
-    const ocupadaEnCola = ocupadasEnCola(usuario)[zonaDestino];
-    if (ocupadaEnCola && ocupadaEnCola !== folio) {
-      mostrarMensaje(`La ubicación ${zonaDestino} está reservada por el registro pendiente del folio ${ocupadaEnCola}. Elige otra.`, "error");
-      return;
-    }
-
     const limpiarFormulario = () => {
       form.reset();
       ponerOrigen("");
       datosAutollenados = false;
       ubicacionManual = false;
+      campo("mas-encima").value = "si";
+      actualizarBloquesEstiba();
       mostrarEstadoFolio("", "");
       actualizarRelojFecha();
       mostrarBloqueRack();
@@ -478,17 +563,17 @@ protegerPagina("operador").then((usuario) => {
 
     try {
       await guardarMovimiento({ ...movimiento, capturadoEn: null }, usuario);
-      mostrarMensaje(`Registro del folio ${folio} guardado en ${zonaDestino}.`, "ok");
+      mostrarMensaje(`Registro de la pieza ${folio} guardado en ${zonaDestino}.`, "ok");
       limpiarFormulario();
     } catch (error) {
       if (esFallaTemporal(error)) {
         guardarCola(usuario, [...leerCola(usuario), movimiento]);
-        mostrarMensaje(`Firebase no aceptó el registro por ahora. El folio ${folio} quedó guardado en este equipo y se enviará solo.`, "ok");
+        mostrarMensaje(`Firebase no aceptó el registro por ahora. La pieza ${folio} quedó guardada en este equipo y se enviará solo.`, "ok");
         limpiarFormulario();
         return;
       }
       if (error.message === "ubicacion-ocupada") {
-        mostrarMensaje(`La ubicación ${zonaDestino} ya está ocupada por el folio ${error.ocupadaPor}. Elige otra.`, "error");
+        mostrarMensaje(`La ubicación ${zonaDestino} no tiene espacio para esta pieza (ocupada por ${error.ocupadaPor}). Elige otra.`, "error");
         ubicacionManual = false;
         actualizarRecomendacion();
         return;
