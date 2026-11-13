@@ -102,7 +102,7 @@ function actualizarNiveles() {
   const aviso = campo("tamano-pieza");
   const m = parsearMedidas(medidas);
   if (!m) aviso.textContent = "Sin tarima o caja: pendiente de medir.";
-  else if (!cabeEnRack(medidas)) aviso.textContent = `No cabe en un rack: pasa de ${LARGO_NIVEL} × ${ANCHO_NIVEL} pulgadas o de la altura de los niveles.`;
+  else if (!cabeEnRack(medidas)) aviso.textContent = `No cabe en un rack: pasa de ${LARGO_NIVEL} × ${ANCHO_NIVEL} pulgadas o de la altura de los niveles. La zona destino pasa a "Por preparar".`;
   else aviso.textContent = `${m.largo} × ${m.ancho}${m.alto === null ? " (alto sin dato: lo confirma el operador)" : ` × ${m.alto}`} pulgadas.`;
 }
 
@@ -313,16 +313,29 @@ function iniciarRecomendaciones(usuario) {
     const estandar = campo("estandar-pieza").value.trim();
     const medidas = medidasCapturadas();
     const estiba = estibaActual();
-    if (!cliente || !estandar || !medidas || !estiba.lista) {
+
+    // Una pieza que no cabe en ningún nivel no puede ir a rack: la zona destino pasa sola a la zona fuera de rack.
+    if (medidas && !cabeEnRack(medidas)) {
       consultaRecomendacion++;
-      mostrarRecomendacion(TEXTO_FALTAN_DATOS);
+      const cambio = campo("zona-destino").value === ZONA_RACK;
+      if (cambio) {
+        campo("zona-destino").value = ZONAS_DESTINO.find(z => z !== ZONA_RACK);
+        mostrarBloqueRack();
+      }
+      mostrarRecomendacion(`La pieza pasa de ${LARGO_NIVEL} × ${ANCHO_NIVEL} pulgadas o de la altura de los niveles, así que no va en rack.${cambio ? ` Se cambió la zona destino a "${campo("zona-destino").value}".` : ""}`);
       if (!ubicacionManual) ponerUbicacion("");
       return;
     }
 
-    if (!cabeEnRack(medidas)) {
+    if (!cliente || !estandar || !medidas || !estiba.lista) {
       consultaRecomendacion++;
-      mostrarRecomendacion(`Sin recomendación de rack: la pieza pasa de ${LARGO_NIVEL} × ${ANCHO_NIVEL} pulgadas o de la altura de los niveles.`);
+      const faltan = [
+        !cliente && "el cliente",
+        !estandar && "el estándar",
+        !medidas && "la tarima o caja",
+        !estiba.lista && (estiba.estibable === false ? "si es una sola pieza" : "si se puede estibar")
+      ].filter(Boolean);
+      mostrarRecomendacion(`Para recibir una recomendación de rack falta: ${faltan.join(", ")}.`);
       if (!ubicacionManual) ponerUbicacion("");
       return;
     }
@@ -502,7 +515,7 @@ protegerPagina("operador").then((usuario) => {
     const estiba = estibaActual();
     if (esRack) {
       if (!medidas || !cabeEnRack(medidas)) {
-        mostrarMensaje(`Para ubicar la pieza en un rack elige la tarima o caja; debe caber en ${LARGO_NIVEL} × ${ANCHO_NIVEL} pulgadas y en la altura de algún nivel.`, "error");
+        mostrarMensaje(`Para ubicar la pieza en un rack elige la tarima o caja; debe caber en ${LARGO_NIVEL} × ${ANCHO_NIVEL} pulgadas y en la altura de algún nivel. Si no cabe, cambia la zona destino a "Por preparar".`, "error");
         return;
       }
       if (!estiba.lista) {
